@@ -155,6 +155,52 @@ def UpdateWaitingDots(timer: any): number
   return 1
 enddef
 
+export def AddScope(paths: list<string>): void
+  if !HasActiveChat()
+    if !g:copilot_chat_create_on_add_selection
+      return
+    endif
+    Create()
+    execute winnr() .. ' wincmd w'
+  endif
+
+  var file_refs: list<string> = []
+  for path in paths
+    var expanded: string = expand(path)
+    if isdirectory(expanded)
+      # For directories, collect all files recursively
+      var files: list<string> = glob(expanded .. '/**/*', 0, 1)
+      for file in files
+        if !isdirectory(file)
+          add(file_refs, '#file: ' .. fnamemodify(file, ':.'))
+        endif
+      endfor
+    elseif filereadable(expanded)
+      add(file_refs, '#file: ' .. fnamemodify(expanded, ':.'))
+    else
+      echom 'CopilotChatAddScope: path not found: ' .. path
+    endif
+  endfor
+
+  if !empty(file_refs)
+    AppendMessage(file_refs)
+  endif
+enddef
+
+export def CompleteScope(arglead: string, cmdline: string, cursorpos: number): list<string>
+  var matches: list<string> = []
+  var pattern: string = arglead .. '*'
+  var entries: list<string> = glob(pattern, 0, 1)
+  for entry in entries
+    if isdirectory(entry)
+      add(matches, entry .. '/')
+    else
+      add(matches, entry)
+    endif
+  endfor
+  return matches
+enddef
+
 export def AddSelection(): void
   if !HasActiveChat()
     if !g:copilot_chat_create_on_add_selection
