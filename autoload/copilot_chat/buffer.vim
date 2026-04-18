@@ -168,8 +168,15 @@ export def AddScope(paths: list<string>): void
   for path in paths
     var expanded: string = expand(path)
     if isdirectory(expanded)
-      # For directories, collect all files recursively
-      var files: list<string> = glob(expanded .. '/**/*', 0, 1)
+      # For directories, use git ls-files when in a repo to respect
+      # .gitignore and avoid scanning large ignored directories
+      var files: list<string> = []
+      system('git -C ' .. shellescape(expanded) .. ' rev-parse --is-inside-work-tree 2>/dev/null')
+      if v:shell_error == 0
+        files = systemlist('git ls-files --cached --others --exclude-standard -- ' .. shellescape(expanded))
+      else
+        files = glob(expanded .. '/**/*', 0, 1)
+      endif
       for file in files
         if !isdirectory(file)
           add(file_refs, '#file: ' .. fnamemodify(file, ':.'))
@@ -187,6 +194,7 @@ export def AddScope(paths: list<string>): void
   endif
 enddef
 
+# Parameters cmdline and cursorpos are required by Vim's customlist interface
 export def CompleteScope(arglead: string, cmdline: string, cursorpos: number): list<string>
   var matches: list<string> = []
   var pattern: string = arglead .. '*'
