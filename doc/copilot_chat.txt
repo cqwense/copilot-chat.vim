@@ -89,6 +89,14 @@ Copilot's AI assistant directly from within their editor.
                                                        *:CopilotChatList*
 :CopilotChatList         Lists all saved chat histories.
 
+                                                       *:CopilotChatAddScope*
+:CopilotChatAddScope {paths}
+                         Adds one or more files or directories to the active
+                         chat scope. File paths are inserted as `#file:`
+                         references in the chat buffer. When a directory is
+                         provided, all files within it are added recursively.
+                         Supports file and directory completion via <Tab>.
+
                                                        *:CopilotChatFocus*
 :CopilotChatFocus        Goto the Copilot Chat window, if it exists.
 

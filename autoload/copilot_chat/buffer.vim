@@ -155,6 +155,60 @@ def UpdateWaitingDots(timer: any): number
   return 1
 enddef
 
+export def AddScope(paths: list<string>): void
+  if !HasActiveChat()
+    if !g:copilot_chat_create_on_add_selection
+      return
+    endif
+    Create()
+    execute winnr() .. ' wincmd w'
+  endif
+
+  var file_refs: list<string> = []
+  for path in paths
+    var expanded: string = expand(path)
+    if isdirectory(expanded)
+      # For directories, use git ls-files when in a repo to respect
+      # .gitignore and avoid scanning large ignored directories
+      var files: list<string> = []
+      system('git -C ' .. shellescape(expanded) .. ' rev-parse --is-inside-work-tree 2>/dev/null')
+      if v:shell_error == 0
+        files = systemlist('git ls-files --cached --others --exclude-standard -- ' .. shellescape(expanded))
+      else
+        files = glob(expanded .. '/**/*', 0, 1)
+      endif
+      for file in files
+        if !isdirectory(file)
+          add(file_refs, '#file: ' .. fnamemodify(file, ':.'))
+        endif
+      endfor
+    elseif filereadable(expanded)
+      add(file_refs, '#file: ' .. fnamemodify(expanded, ':.'))
+    else
+      echom 'CopilotChatAddScope: path not found: ' .. path
+    endif
+  endfor
+
+  if !empty(file_refs)
+    AppendMessage(file_refs)
+  endif
+enddef
+
+# Parameters cmdline and cursorpos are required by Vim's customlist interface
+export def CompleteScope(arglead: string, cmdline: string, cursorpos: number): list<string>
+  var matches: list<string> = []
+  var pattern: string = arglead .. '*'
+  var entries: list<string> = glob(pattern, 0, 1)
+  for entry in entries
+    if isdirectory(entry)
+      add(matches, entry .. '/')
+    else
+      add(matches, entry)
+    endif
+  endfor
+  return matches
+enddef
+
 export def AddSelection(): void
   if !HasActiveChat()
     if !g:copilot_chat_create_on_add_selection
